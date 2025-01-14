@@ -1,0 +1,68 @@
+function fetchAppSeverityCounts(applicationName, subscriptionIds) {
+  const url = "your_api_url"; // Replace with your API endpoint
+  const bearerToken = getBearerToken(); // Reuse your existing token function
+
+  const payload = JSON.stringify({
+    query: `your_query_here`, // Replace with your query
+    variables: {
+      subscriptionIds: subscriptionIds // Pass subscription IDs for the application
+    }
+  });
+
+  const headers = {
+    Authorization: `Bearer ${bearerToken}`,
+    "Content-Type": "application/json",
+    Accept: "application/json"
+  };
+
+  const options = {
+    method: "post",
+    headers: headers,
+    payload: payload,
+    muteHttpExceptions: true
+  };
+
+  try {
+    const response = UrlFetchApp.fetch(url, options);
+    const jsonData = JSON.parse(response.getContentText());
+
+    if (jsonData && jsonData.data && jsonData.data.configurationFindings && jsonData.data.configurationFindings.nodes) {
+      const nodes = jsonData.data.configurationFindings.nodes;
+
+      // Count severities
+      const severityCounts = nodes.reduce(
+        (counts, node) => {
+          const severity = node.severity || "Unknown";
+          if (severity === "Critical") counts.critical += 1;
+          else if (severity === "Medium") counts.medium += 1;
+          else if (severity === "Low") counts.low += 1;
+          return counts;
+        },
+        { critical: 0, medium: 0, low: 0 }
+      );
+
+      return {
+        application: applicationName,
+        critical: severityCounts.critical,
+        medium: severityCounts.medium,
+        low: severityCounts.low
+      };
+    } else {
+      Logger.log(`No valid data found for ${applicationName}.`);
+      return {
+        application: applicationName,
+        critical: 0,
+        medium: 0,
+        low: 0
+      };
+    }
+  } catch (error) {
+    Logger.log(`Error fetching data for ${applicationName}: ${error}`);
+    return {
+      application: applicationName,
+      critical: 0,
+      medium: 0,
+      low: 0
+    };
+  }
+}
